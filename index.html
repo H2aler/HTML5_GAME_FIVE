@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>미사일 크러쉬 서바이벌</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            background-color: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+        #game-container {
+            position: relative;
+            width: 1200px;
+            height: 800px;
+            background-color: #000;
+            border: 2px solid #333;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+        }
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+        }
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            text-shadow: 2px 2px 2px #000;
+            font-size: 20px;
+            pointer-events: none;
+        }
+        #stage-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #fff;
+            text-shadow: 2px 2px 2px #000;
+            font-size: 20px;
+            text-align: right;
+            pointer-events: none;
+        }
+        #menu {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border: 2px solid #ff4500;
+            border-radius: 10px;
+            color: #fff;
+        }
+        .menu-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: #333;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            width: 200px;
+            transition: background 0.3s;
+        }
+        .menu-item:hover {
+            background: #ff4500;
+        }
+        .weapon-item {
+            margin: 5px 0;
+            padding: 8px;
+            background: #222;
+            border: 1px solid #444;
+            color: #fff;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+        }
+        .selected-weapon {
+            background: #ff4500;
+            border-color: #ff6347;
+        }
+        #dashboard {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 100px;
+            background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.8));
+            pointer-events: none;
+        }
+        #game-title {
+            font-size: 48px;
+            color: #e74c3c;
+            text-shadow: 3px 3px 5px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+        }
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        #start-screen.hidden {
+            display: none;
+        }
+        #start-screen h2 {
+            color: #fff;
+            font-size: 36px;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(255, 69, 0, 0.8);
+        }
+        #difficulty-selector {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .difficulty-container {
+            display: flex;
+            gap: 20px;
+        }
+        .difficulty-btn {
+            padding: 15px 30px;
+            font-size: 18px;
+            border: 2px solid #ff4500;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .difficulty-btn:hover {
+            background: rgba(255, 69, 0, 0.8);
+            transform: scale(1.1);
+        }
+        .difficulty-btn.selected {
+            background: #ff4500;
+            transform: scale(1.1);
+        }
+        #start-btn {
+            padding: 20px 40px;
+            font-size: 24px;
+            background: #ff4500;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        #start-btn.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #start-btn.active:hover {
+            transform: scale(1.1);
+            background: #ff6347;
+        }
+        /* 모바일 컨트롤러 스타일 */
+        #mobile-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            z-index: 1000;
+        }
+
+        .control-button {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 69, 0, 0.5);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            margin: 5px;
+            touch-action: none;
+            user-select: none;
+        }
+
+        .shoot-button {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 0, 0, 0.5);
+        }
+
+        #controls-info {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            z-index: 1000;
+        }
+
+        @media (max-width: 768px) {
+            #mobile-controls {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                align-items: center;
+                width: 100%;
+                max-width: 300px;
+            }
+            
+            #controls-info {
+                display: none;
+            }
+        }
+
+        /* 조이스틱 스타일 */
+        #joystick-area {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 150px;
+            height: 150px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            display: none;
+            touch-action: none;
+            z-index: 1000;
+        }
+
+        #joystick {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 69, 0, 0.8);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            touch-action: none;
+        }
+
+        #mobile-shoot {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 0, 0, 0.6);
+            border: 3px solid rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            display: none;
+            touch-action: none;
+            z-index: 1000;
+            color: white;
+            font-size: 18px;
+            text-align: center;
+            line-height: 80px;
+        }
+
+        @media (max-width: 768px) {
+            #joystick-area,
+            #mobile-shoot {
+                display: block;
+            }
+            #mobile-controls {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1 id="game-title">미사일 크러쉬 서바이벌</h1>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="dashboard"></div>
+        <div id="hud">
+            돈: <span id="money">0</span><br>
+            체력: <span id="health">100</span>/<span id="maxHealth">100</span>
+        </div>
+        <div id="stage-info">
+            스테이지: <span id="stage">1</span><br>
+            미사일 처치: <span id="kills">0</span>/<span id="required-kills">20</span>
+        </div>
+        <div id="start-screen">
+            <h2>미사일 크러쉬 서바이벌</h2>
+            <p style="color: #fff; margin-bottom: 20px;">난이도를 선택하고 게임을 시작하세요</p>
+            <div id="difficulty-selector">
+                <div class="difficulty-container">
+                    <button onclick="selectDifficulty('easy')" class="difficulty-btn">쉬움</button>
+                    <button onclick="selectDifficulty('normal')" class="difficulty-btn">보통</button>
+                    <button onclick="selectDifficulty('hard')" class="difficulty-btn">어려움</button>
+                </div>
+                <div class="difficulty-desc" style="color: #ffd700; text-align: center;">
+                    <p id="difficulty-description">난이도를 선택해주세요</p>
+                </div>
+                <button id="start-btn" onclick="startGame()" disabled>게임 시작</button>
+            </div>
+        </div>
+        <div id="menu">
+            <h2>업그레이드</h2>
+            <button class="menu-item" onclick="upgrade('engine')">
+                엔진 레벨 <span id="engine-level">1</span> (100골드)
+            </button>
+            <button class="menu-item" onclick="upgrade('armor')">
+                방어 레벨 <span id="armor-level">1</span> (150골드)
+            </button>
+            <h3>무기</h3>
+            <button id="weapon-machineGun" class="weapon-item selected-weapon" onclick="selectWeapon('machineGun')">
+                기관총 (기본)
+            </button>
+            <button id="weapon-shotgun" class="weapon-item" onclick="selectWeapon('shotgun')">
+                샷건 (500골드)
+            </button>
+            <button id="weapon-rocket" class="weapon-item" onclick="selectWeapon('rocket')">
+                로켓 런처 (1000골드)
+            </button>
+        </div>
+    </div>
+    <div id="controls-info">
+        <h3>조작 방법</h3>
+        <p>↑: 위로 이동</p>
+        <p>↓: 아래로 이동</p>
+        <p>←: 왼쪽으로 이동</p>
+        <p>→: 오른쪽으로 이동</p>
+        <p>스페이스바: 발사</p>
+    </div>
+
+    <div id="mobile-controls">
+        <div style="width: 100%; display: flex; justify-content: center; margin-bottom: 10px;">
+            <button class="control-button" id="up-button">↑</button>
+        </div>
+        <div style="display: flex; justify-content: center; align-items: center;">
+            <button class="control-button" id="left-button">←</button>
+            <button class="control-button shoot-button" id="shoot-button">발사</button>
+            <button class="control-button" id="right-button">→</button>
+        </div>
+        <div style="width: 100%; display: flex; justify-content: center; margin-top: 10px;">
+            <button class="control-button" id="down-button">↓</button>
+        </div>
+    </div>
+
+    <div id="joystick-area">
+        <div id="joystick"></div>
+    </div>
+    <div id="mobile-shoot">발사</div>
+    <script src="game.js"></script>
+    <script>
+        let selectedDifficulty = null;
+        
+        function selectDifficulty(difficulty) {
+            selectedDifficulty = difficulty;
+            const buttons = document.querySelectorAll('.difficulty-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('selected');
+                if (btn.textContent.toLowerCase() === difficulty) {
+                    btn.classList.add('selected');
+                }
+            });
+            
+            // 난이도 설명 업데이트
+            const descElement = document.getElementById('difficulty-description');
+            const descriptions = {
+                easy: '쉬움: 느린 미사일, 적은 데미지',
+                normal: '보통: 기본 난이도',
+                hard: '어려움: 빠른 미사일, 높은 데미지, 2배 보상'
+            };
+            descElement.textContent = descriptions[difficulty];
+            
+            // 시작 버튼 활성화
+            const startBtn = document.getElementById('start-btn');
+            startBtn.classList.add('active');
+            startBtn.disabled = false;
+        }
+        
+        function startGame() {
+            if (!selectedDifficulty) return;
+            
+            // 난이도 설정
+            setDifficulty(selectedDifficulty);
+            
+            // 시작 화면 숨기기
+            const startScreen = document.getElementById('start-screen');
+            startScreen.classList.add('hidden');
+            
+            // 게임 상태 업데이트
+            gameState.isGameStarted = true;
+            gameState.isPaused = false;
+            
+            // HUD 표시
+            document.getElementById('hud').style.display = 'block';
+            document.getElementById('stage-info').style.display = 'block';
+        }
+    </script>
+</body>
+</html> 
